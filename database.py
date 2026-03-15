@@ -300,3 +300,14 @@ def get_pending_payments():
     rows = c.fetchall()
     conn.close()
     return rows
+
+def set_balance(user_id, amount):
+    """User ka balance exact amount pe set karta hai"""
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute('''
+        UPDATE users SET balance = ? 
+        WHERE user_id = ?
+    ''', (amount, user_id))
+    conn.commit()
+    conn.close()
