@@ -364,6 +364,146 @@ def callback_handler(call):
         target_user_id = int(parts[2])
         handle_approve(call, payment_id, target_user_id)
 
+# --- Admin: Reset Balance to 0 ---
+@bot.message_handler(commands=['resetbal'])
+def admin_reset_balance(message):
+    """/resetbal user_id"""
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    try:
+        parts = message.text.split()
+        target_user_id = int(parts[1])
+
+        old_bal = get_balance(target_user_id)
+        set_balance(target_user_id, 0)
+
+        bot.send_message(
+            message.chat.id,
+            f"""
+✅ **Balance Reset to ₹0!**
+━━━━━━━━━━━━━━━━━━━━━
+👤 User ID: `{target_user_id}`
+💵 Old Balance: ₹{old_bal:.2f}
+💰 New Balance: ₹0.00
+━━━━━━━━━━━━━━━━━━━━━
+""",
+            parse_mode="Markdown"
+        )
+
+        # User ko notify karo
+        bot.send_message(
+            target_user_id,
+            f"""
+⚠️ **Balance Reset by Admin!**
+💵 Old Balance: ₹{old_bal:.2f}
+💰 New Balance: ₹0.00
+
+📞 Contact Admin: @{ADMIN_USERNAME}
+""",
+            parse_mode="Markdown"
+        )
+    except (IndexError, ValueError):
+        bot.send_message(
+            message.chat.id,
+            "❌ Format: `/resetbal user_id`\n"
+            "Example: `/resetbal 987654321`",
+            parse_mode="Markdown"
+        )
+
+# --- Admin: Set Exact Balance ---
+@bot.message_handler(commands=['setbal'])
+def admin_set_balance(message):
+    """/setbal user_id amount"""
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    try:
+        parts = message.text.split()
+        target_user_id = int(parts[1])
+        amount = float(parts[2])
+
+        old_bal = get_balance(target_user_id)
+        set_balance(target_user_id, amount)
+
+        bot.send_message(
+            message.chat.id,
+            f"""
+✅ **Balance Updated!**
+━━━━━━━━━━━━━━━━━━━━━
+👤 User ID: `{target_user_id}`
+💵 Old Balance: ₹{old_bal:.2f}
+💰 New Balance: ₹{amount:.2f}
+━━━━━━━━━━━━━━━━━━━━━
+""",
+            parse_mode="Markdown"
+        )
+
+        # User ko notify karo
+        bot.send_message(
+            target_user_id,
+            f"""
+⚠️ **Balance Updated by Admin!**
+💵 Old Balance: ₹{old_bal:.2f}
+💰 New Balance: ₹{amount:.2f}
+""",
+            parse_mode="Markdown"
+        )
+    except (IndexError, ValueError):
+        bot.send_message(
+            message.chat.id,
+            "❌ Format: `/setbal user_id amount`\n"
+            "Example: `/setbal 987654321 50`",
+            parse_mode="Markdown"
+        )
+
+# --- Admin: Deduct Balance ---
+@bot.message_handler(commands=['deductbal'])
+def admin_deduct_balance(message):
+    """/deductbal user_id amount"""
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    try:
+        parts = message.text.split()
+        target_user_id = int(parts[1])
+        amount = float(parts[2])
+
+        old_bal = get_balance(target_user_id)
+
+        if old_bal < amount:
+            bot.send_message(
+                message.chat.id,
+                f"❌ User ka balance ₹{old_bal:.2f} hai!\n"
+                f"₹{amount:.2f} deduct nahi ho sakta!",
+                parse_mode="Markdown"
+            )
+            return
+
+        deduct_balance(target_user_id, amount)
+        new_bal = get_balance(target_user_id)
+
+        bot.send_message(
+            message.chat.id,
+            f"""
+✅ **Balance Deducted!**
+━━━━━━━━━━━━━━━━━━━━━
+👤 User ID: `{target_user_id}`
+💵 Old Balance: ₹{old_bal:.2f}
+➖ Deducted: ₹{amount:.2f}
+💰 New Balance: ₹{new_bal:.2f}
+━━━━━━━━━━━━━━━━━━━━━
+""",
+            parse_mode="Markdown"
+        )
+    except (IndexError, ValueError):
+        bot.send_message(
+            message.chat.id,
+            "❌ Format: `/deductbal user_id amount`\n"
+            "Example: `/deductbal 987654321 20`",
+            parse_mode="Markdown"
+        )
+
     # ---- ADMIN: REJECT PAYMENT ----
     elif data.startswith("reject_"):
         if user_id != ADMIN_ID:
@@ -713,44 +853,40 @@ def stock_status(message):
 # ============================================
 
 # --- Add Gmail to Stock ---
-@bot.message_handler(commands=['addgmail'])
-def add_gmail_command(message):
-    """Admin command: /addgmail email@gmail.com password123"""
+@bot.message_handler(commands=['adminhelp'])
+def admin_help(message):
     if message.from_user.id != ADMIN_ID:
-        bot.send_message(
-            message.chat.id, 
-            "❌ Only Admin can use this!"
-        )
         return
 
-    try:
-        parts = message.text.split()
-        if len(parts) < 3:
-            bot.send_message(
-                message.chat.id,
-                "❌ Format: `/addgmail email password`",
-                parse_mode="Markdown"
-            )
-            return
-
-        email = parts[1]
-        password = parts[2]
-        add_gmail_to_stock(email, password)
-
-        stock = get_stock_count()
-        bot.send_message(
-            message.chat.id,
-            f"""
-✅ **Gmail Added to Stock!**
+    bot.send_message(
+        message.chat.id,
+        """
+🔧 **Admin Commands**
 ━━━━━━━━━━━━━━━━━━━━━
-📧 Email: `{email}`
-🔑 Pass: `{password}`
-📦 Total Stock: {stock}
+
+📧 **Gmail Management:**
+`/addgmail email pass` - Add 1 gmail
+`/bulkadd` - Add multiple gmails
+`/stock` - Check stock
+
+💰 **Balance Management:**
+`/addbal user_id amount` - Balance add
+`/deductbal user_id amount` - Balance minus
+`/setbal user_id amount` - Balance set
+`/resetbal user_id` - Balance 0 karo
+`/pending` - Pending payments
+
+👥 **User Management:**
+`/users` - All users list
+
+📢 **Other:**
+`/broadcast message` - Sabko message
+`/adminhelp` - Ye help
+
 ━━━━━━━━━━━━━━━━━━━━━
 """,
-            parse_mode="Markdown"
-        )
-    except Exception as e:
+        parse_mode="Markdown"
+    )    except Exception as e:
         bot.send_message(
             message.chat.id, 
             f"❌ Error: {str(e)}"
