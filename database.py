@@ -11,11 +11,9 @@ def get_connection():
 
 
 def init_db():
-    """Database tables create karta hai"""
     conn = get_connection()
     c = conn.cursor()
 
-    # Users table - balance track karne ke liye
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY,
@@ -27,7 +25,6 @@ def init_db():
         )
     ''')
 
-    # Gmail stock table - gmail/pass store karne ke liye
     c.execute('''
         CREATE TABLE IF NOT EXISTS gmail_stock (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -40,7 +37,6 @@ def init_db():
         )
     ''')
 
-    # Pending payments - payment requests track karne ke liye
     c.execute('''
         CREATE TABLE IF NOT EXISTS pending_payments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,7 +48,6 @@ def init_db():
         )
     ''')
 
-    # Purchase history
     c.execute('''
         CREATE TABLE IF NOT EXISTS purchase_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -69,7 +64,6 @@ def init_db():
 
 
 def register_user(user_id, username, first_name):
-    """Naya user register karta hai"""
     conn = get_connection()
     c = conn.cursor()
     c.execute('''
@@ -83,7 +77,6 @@ def register_user(user_id, username, first_name):
 
 
 def get_balance(user_id):
-    """User ka balance return karta hai"""
     conn = get_connection()
     c = conn.cursor()
     c.execute('SELECT balance FROM users WHERE user_id = ?', 
@@ -96,7 +89,6 @@ def get_balance(user_id):
 
 
 def add_balance(user_id, amount):
-    """User ke balance mein add karta hai"""
     conn = get_connection()
     c = conn.cursor()
     c.execute('''
@@ -107,8 +99,18 @@ def add_balance(user_id, amount):
     conn.close()
 
 
+def set_balance(user_id, amount):
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute('''
+        UPDATE users SET balance = ? 
+        WHERE user_id = ?
+    ''', (amount, user_id))
+    conn.commit()
+    conn.close()
+
+
 def deduct_balance(user_id, amount):
-    """User ke balance se minus karta hai"""
     conn = get_connection()
     c = conn.cursor()
     c.execute('''
@@ -121,7 +123,6 @@ def deduct_balance(user_id, amount):
 
 
 def get_available_gmails(count):
-    """Available (unsold) gmails fetch karta hai"""
     conn = get_connection()
     c = conn.cursor()
     c.execute('''
@@ -135,7 +136,6 @@ def get_available_gmails(count):
 
 
 def mark_gmail_sold(gmail_id, user_id):
-    """Gmail ko sold mark karta hai"""
     conn = get_connection()
     c = conn.cursor()
     c.execute('''
@@ -150,7 +150,6 @@ def mark_gmail_sold(gmail_id, user_id):
 
 
 def add_gmail_to_stock(email, password):
-    """Naya gmail stock mein add karta hai"""
     conn = get_connection()
     c = conn.cursor()
     c.execute('''
@@ -163,7 +162,6 @@ def add_gmail_to_stock(email, password):
 
 
 def get_stock_count():
-    """Available gmail count return karta hai"""
     conn = get_connection()
     c = conn.cursor()
     c.execute('''
@@ -176,7 +174,6 @@ def get_stock_count():
 
 
 def create_payment_request(user_id, amount):
-    """Payment request create karta hai"""
     conn = get_connection()
     c = conn.cursor()
     c.execute('''
@@ -192,11 +189,9 @@ def create_payment_request(user_id, amount):
 
 
 def approve_payment(payment_id):
-    """Payment approve karta hai aur balance add karta hai"""
     conn = get_connection()
     c = conn.cursor()
 
-    # Payment details fetch karo
     c.execute('''
         SELECT user_id, amount, status FROM pending_payments 
         WHERE id = ?
@@ -214,7 +209,6 @@ def approve_payment(payment_id):
     user_id = row['user_id']
     amount = row['amount']
 
-    # Payment approve karo
     c.execute('''
         UPDATE pending_payments 
         SET status = 'approved', approved_at = ?
@@ -222,7 +216,6 @@ def approve_payment(payment_id):
     ''', (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
           payment_id))
 
-    # Balance add karo
     c.execute('''
         UPDATE users SET balance = balance + ? 
         WHERE user_id = ?
@@ -234,7 +227,6 @@ def approve_payment(payment_id):
 
 
 def reject_payment(payment_id):
-    """Payment reject karta hai"""
     conn = get_connection()
     c = conn.cursor()
 
@@ -263,7 +255,6 @@ def reject_payment(payment_id):
 
 
 def add_purchase_history(user_id, amount, gmail_count):
-    """Purchase history save karta hai"""
     conn = get_connection()
     c = conn.cursor()
     c.execute('''
@@ -277,7 +268,6 @@ def add_purchase_history(user_id, amount, gmail_count):
 
 
 def get_all_users():
-    """Sare users return karta hai"""
     conn = get_connection()
     c = conn.cursor()
     c.execute('SELECT * FROM users')
@@ -287,7 +277,6 @@ def get_all_users():
 
 
 def get_pending_payments():
-    """Pending payments return karta hai"""
     conn = get_connection()
     c = conn.cursor()
     c.execute('''
@@ -300,14 +289,3 @@ def get_pending_payments():
     rows = c.fetchall()
     conn.close()
     return rows
-
-def set_balance(user_id, amount):
-    """User ka balance exact amount pe set karta hai"""
-    conn = get_connection()
-    c = conn.cursor()
-    c.execute('''
-        UPDATE users SET balance = ? 
-        WHERE user_id = ?
-    ''', (amount, user_id))
-    conn.commit()
-    conn.close()
